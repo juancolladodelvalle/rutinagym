@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Gimnasio Pro - Rutina Personalizada</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 16px;
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 { text-align: center; font-size: 1.5rem; color: var(--primary); margin-bottom: 5px; }
+        p.subtitle { text-align: center; font-size: 0.85rem; color: #64748b; margin-top: 0; }
+        
+        /* Pestañas de categorías */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }
+        .tab-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Canasto de selección rápida por número */
+        .basket-box {
+            background: #eff6ff;
+            border: 2px dashed var(--primary);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .basket-box h3 { margin: 0 0 8px 0; font-size: 1rem; color: var(--primary); }
+        .basket-controls { display: flex; gap: 8px; }
+        .basket-controls select {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 1rem;
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-danger { background: #ef4444; }
+
+        /* Secciones y tarjetas de ejercicios */
+        .category-section { display: none; }
+        .category-section.active { display: block; }
+        
+        .exercise-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .exercise-card:hover { border-color: var(--primary); }
+        .exercise-num {
+            background: var(--primary);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .exercise-info h4 { margin: 0 0 4px 0; font-size: 1rem; }
+        .exercise-info p { margin: 0; font-size: 0.8rem; color: #64748b; }
+
+        /* Ventana emergente (Modal) */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+        .modal-content img {
+            width: 100%;
+            height: auto;
+            max-height: 250px;
+            object-fit: contain;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .select-group { margin-top: 12px; }
+        .select-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; }
+        .select-group select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; }
+    </style>
+</head>
+<body>
+
+    <h1>🏋️ Mi Gimnasio Pro</h1>
+    <p class="subtitle">Haz clic en un ejercicio o usa el canasto rápido</p>
+
+    <!-- CANASTO DE SELECCIÓN RÁPIDA -->
+    <div class="basket-box">
+        <h3>🛒 Canasto (Acceso por Número)</h3>
+        <div class="basket-controls">
+            <select id="basketSelect">
+                <option value="">-- Elige el número de ejercicio --</option>
+            </select>
+            <button class="btn" onclick="goToExercise()">Ir</button>
+            <button class="btn btn-danger" onclick="clearBasket()">Vaciar</button>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS DE ZONAS -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('piernas', this)">Piernas</button>
+        <button class="tab-btn" onclick="switchTab('brazos', this)">Brazos</button>
+        <button class="tab-btn" onclick="switchTab('tronco', this)">Tronco</button>
+        <button class="tab-btn" onclick="switchTab('calentamiento', this)">Calentamiento</button>
+    </div>
+
+    <!-- CONTENEDOR DE EJERCICIOS -->
+    <div id="exercisesContainer">
+        <!-- SECCIÓN PIERNAS -->
+        <div id="piernas" class="category-section active">
+            <div class="exercise-card" onclick="openModal(1)">
+                <div class="exercise-num">1</div>
+                <div class="exercise-info"><h4>Cuádriceps (Extensión)</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(2)">
+                <div class="exercise-num">2</div>
+                <div class="exercise-info"><h4>Isquiotibiales</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN BRAZOS -->
+        <div id="brazos" class="category-section">
+            <div class="exercise-card" onclick="openModal(3)">
+                <div class="exercise-num">3</div>
+                <div class="exercise-info"><h4>Curl de Bíceps</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(4)">
+                <div class="exercise-num">4</div>
+                <div class="exercise-info"><h4>Polea de Triceps</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(12)">
+                <div class="exercise-num">12</div>
+                <div class="exercise-info"><h4>Calentamiento Polea de Tríceps</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN TRONCO -->
+        <div id="tronco" class="category-section">
+            <div class="exercise-card" onclick="openModal(5)">
+                <div class="exercise-num">5</div>
+                <div class="exercise-info"><h4>Press de Pecho</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(6)">
+                <div class="exercise-num">6</div>
+                <div class="exercise-info"><h4>Remo de Espalda</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(7)">
+                <div class="exercise-num">7</div>
+                <div class="exercise-info"><h4>Jalón al Pecho (Espalda)</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(8)">
+                <div class="exercise-num">8</div>
+                <div class="exercise-info"><h4>Press de Hombros</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN CALENTAMIENTO -->
+        <div id="calentamiento" class="category-section">
+            <div class="exercise-card" onclick="openModal(9)">
+                <div class="exercise-num">9</div>
+                <div class="exercise-info"><h4>Calentamiento con Gomas</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(10)">
+                <div class="exercise-num">10</div>
+                <div class="exercise-info"><h4>Plancha Abdominal</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+            <div class="exercise-card" onclick="openModal(11)">
+                <div class="exercise-num">11</div>
+                <div class="exercise-info"><h4>5 Minutos de Bici</h4><p>Toca para ver especificaciones e imagen</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL (VENTANA EMERGENTE) -->
+    <div id="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle" style="margin-top:0; font-size: 1.2rem; color: var(--primary);">Ejercicio</h2>
+            
+            <img id="modalImg" src="" alt="Imagen del ejercicio">
+            
+            <div style="margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 8px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem;">📋 Especificaciones:</h4>
+                <p id="modalDesc" style="font-size: 0.85rem; color: #475569; margin: 0;"></p>
+            </div>
+            
+            <!-- CONTENEDOR DINÁMICO PARA LOS AJUSTES -->
+            <div id="modalAjustes">
+                <h3 style="font-size: 1rem; margin: 15px 0 8px 0;">⚙️ Ajustar Valores</h3>
+                
+                <div class="select-group">
+                    <label>Peso / Carga</label>
+                    <select id="valPeso">
+                        <option>Nivel 1</option><option>Nivel 2</option><option>Nivel 3</option><option>Nivel 4</option><option>Nivel 5</option>
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label>Series</label>
+                    <select id="valSeries">
+                        <option>3 Series</option><option>4 Series</option><option>5 Series</option>
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label>Repeticiones</label>
+                    <select id="valReps">
+                        <option>10 Repeticiones</option><option>12 Repeticiones</option><option>15 Repeticiones</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BASE DE DATOS CON LOS NOMBRES EXACTOS DE CADA IMAGEN
+        const dbEjercicios = {
+            1: { title: "Cuádriceps (Extensión)", cat: "piernas", desc: "Ajusta el rodillo inferior a la altura de los empeines y eleva las piernas de forma controlada.", img: "cuadriceps.jpg" },
+            2: { title: "Isquiotibiales", cat: "piernas", desc: "Coloca el rodillo en la posterior para trabajar la parte trasera del muslo.", img: "isquio.jpg" },
+            3: { title: "Curl de Bíceps", cat: "brazos", desc: "Apoya los codos firmemente sobre el cojín y realiza la flexión sin balancear el torso.", img: "biceps.jpg" },
+            4: { title: "Polea de Triceps", cat: "brazos", desc: "Mantén los codos pegados al cuerpo y empuja hacia abajo contrayendo los tríceps.", img: "triceps.jpg" },
+            5: { title: "Press de Pecho", cat: "tronco", desc: "Siéntate con la espalda bien apoyada, agarra las manijas y empuja hacia el frente.", img: "pecho.jpg" },
+            6: { title: "Remo de Espalda", cat: "tronco", desc: "Apoya el torso firmemente y tira de las manijas hacia atrás contrayendo la espalda.", img: "remo.jpg" },
+            7: { title: "Jalón al Pecho (Espalda)", cat: "tronco", desc: "Sostén la barra con agarre amplio y baja tirando con los codos hacia abajo.", img: "jalon.jpg" },
+            8: { title: "Press de Hombros", cat: "tronco", desc: "Empuja las asas hacia arriba de forma fluida para trabajar la musculatura del hombro.", img: "hombro.jpg" },
+            9: { title: "Calentamiento con Gomas", cat: "calentamiento", desc: "Ejercicios de activación muscular y movilidad articular con bandas elásticas.", img: "gomas.jpg" },
+            10: { title: "Plancha Abdominal", cat: "calentamiento", desc: "Mantén el cuerpo recto y el abdomen contraído apoyado sobre las palmas.", img: "Plancha Abdominal.jpg" },
+            11: { title: "5 Minutos de Bici", cat: "calentamiento", desc: "Pedaleo suave y constante para elevar las pulsaciones y activar el sistema cardiovascular.", img: "bici.jpg", ocultarAjustes: true },
+            12: { title: "Calentamiento Polea de Tríceps", cat: "brazos", desc: "Movimiento de activación articular y muscular previo con carga ligera en polea.", img: "Polea de Triceps.jpg" }
+        };
+
+        // Rellenar automáticamente el desplegable del canasto ordenado por número
+        window.onload = function() {
+            const select = document.getElementById('basketSelect');
+            for (let i = 1; i <= 12; i++) {
+                if (dbEjercicios[i]) {
+                    let opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Nº ${i} - ${dbEjercicios[i].title}`;
+                    select.appendChild(opt);
+                }
+            }
+        };
+
+        // Cambiar entre pestañas de categorías
+        function switchTab(catId, btn) {
+            document.querySelectorAll('.category-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(catId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        // Abrir la ventana emergente (modal) con la foto y datos del ejercicio
+        function openModal(id) {
+            const ex = dbEjercicios[id];
+            document.getElementById('modalTitle').textContent = `Nº ${id}: ${ex.title}`;
+            document.getElementById('modalDesc').textContent = ex.desc;
+            document.getElementById('modalImg').src = ex.img;
+            
+            // Ocultar o mostrar los selectores según si el ejercicio lo requiere
+            const ajustesDiv = document.getElementById('modalAjustes');
+            if (ex.ocultarAjustes) {
+                ajustesDiv.style.display = 'none';
+            } else {
+                ajustesDiv.style.display = 'block';
+            }
+
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // Cerrar la ventana emergente
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // Función del canasto: Ir al ejercicio seleccionado por su número
+        function goToExercise() {
+            const val = document.getElementById('basketSelect').value;
+            if(!val) return alert("Por favor, selecciona un número del canasto.");
+            
+            const ex = dbEjercicios[val];
+            const tabBtn = document.querySelector(`[onclick*="${ex.cat}"]`);
+            if(tabBtn) switchTab(ex.cat, tabBtn);
+            
+            openModal(val);
+        }
+
+        // Función para vaciar la selección del canasto
+        function clearBasket() {
+            document.getElementById('basketSelect').value = "";
+        }
+    </script>
+</body>
+</html>
